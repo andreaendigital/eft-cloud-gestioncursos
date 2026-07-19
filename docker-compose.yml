@@ -2,7 +2,7 @@ version: '3.8'
 
 # ============================================================
 # docker-compose.yml — Infraestructura local de desarrollo
-# Levanta RabbitMQ con panel de administración.
+# Levanta RabbitMQ con panel de administración..
 #
 # Uso:
 #   docker-compose up -d          → iniciar en background
