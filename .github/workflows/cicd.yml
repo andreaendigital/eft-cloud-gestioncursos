@@ -67,7 +67,7 @@ jobs:
       - name: Build y Push bff-service
         uses: docker/build-push-action@v5
         with:
-          context: ./bff-service
+          context: .
           file: ./bff-service/Dockerfile
           push: true
           tags: |
@@ -79,7 +79,7 @@ jobs:
       - name: Build y Push worker-service
         uses: docker/build-push-action@v5
         with:
-          context: ./worker-service
+          context: .
           file: ./worker-service/Dockerfile
           push: true
           tags: |
