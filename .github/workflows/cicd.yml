@@ -1,92 +1,34 @@
-# ============================================================
-# CI/CD Pipeline — Gestión de Cursos en Línea
-# ============================================================
-# Flujo:
-#   1. Build & Test  → compila y prueba ambos microservicios con Maven
-#   2. Docker Hub    → construye y publica las imágenes con tag :latest
-#   3. Deploy EC2    → SSH a la instancia para hacer pull y reiniciar
-#
-# Secrets de GitHub requeridos (Settings → Secrets → Actions):
-#
-#   Docker Hub:
-#     DOCKERHUB_USERNAME      → nombre de usuario de Docker Hub
-#     DOCKERHUB_TOKEN         → token de acceso de Docker Hub (no la contraseña)
-#
-#   AWS EC2:
-#     EC2_HOST                → IP pública o DNS de la instancia EC2
-#     EC2_USER                → usuario SSH (ej: ec2-user, ubuntu)
-#     EC2_SSH_KEY             → clave privada PEM completa (incluye -----BEGIN/END-----)
-#
-#   Azure AD — Identity as a Service (BFF Service):
-#     AZURE_AD_ISSUER_URI     → URI del emisor JWT de Azure AD
-#                               Formato: https://login.microsoftonline.com/{tenant-id}/v2.0
-#     AZURE_AD_JWKS_URI       → URI del endpoint JWKS para validar firma JWT
-#                               Formato: https://login.microsoftonline.com/{tenant-id}/discovery/v2.0/keys
-#     AZURE_CLIENT_ID         → Application (client) ID del BFF en Azure AD
-#                               Se usa para validar el claim "aud" del JWT entrante.
-#                               (AZURE_CLIENT_SECRET y AZURE_TENANT_ID NO son necesarios:
-#                                el BFF solo verifica tokens, nunca los solicita)
-#
-#   Infraestructura (pasadas al docker-compose en EC2):
-#     RABBITMQ_HOST           → host del broker RabbitMQ en EC2
-#     RABBITMQ_USERNAME       → usuario RabbitMQ
-#     RABBITMQ_PASSWORD       → contraseña RabbitMQ
-#     ORACLE_DB_URL           → URL JDBC de Oracle Cloud
-#     ORACLE_DB_USER          → usuario de Oracle Cloud
-#     ORACLE_DB_PASSWORD      → contraseña de Oracle Cloud
-#     AWS_S3_REGION           → región AWS del bucket S3 (ej: us-east-1)
-#     AWS_S3_BUCKET_NAME      → nombre del bucket S3
-#
-#   AWS S3 — credenciales de AWS Academy (worker-service):
-#     AWS_ACCESS_KEY_ID       → clave de acceso temporal de AWS Academy
-#     AWS_SECRET_ACCESS_KEY   → clave secreta temporal de AWS Academy
-#     AWS_SESSION_TOKEN       → token de sesión temporal de AWS Academy
-#                               (las tres las provee AWS Academy al iniciar el lab)
-#                               Son leídas automáticamente por DefaultCredentialsProvider
-#                               del AWS SDK v2 desde las variables de entorno del proceso.
-# ============================================================
-
-name: CI/CD Pipeline — Cursos en Línea
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
       - main
 
-# Cancela ejecuciones anteriores del mismo workflow si se hace
-# un nuevo push antes de que la anterior termine (evita deploys solapados)
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
 
-  # ──────────────────────────────────────────────────────────
-  # ETAPA 1: Build & Test
-  # Compila el proyecto multi-módulo Maven y ejecuta los tests
-  # ──────────────────────────────────────────────────────────
   build-and-test:
-    name: Build & Test (Java 17 + Maven)
+    name: Build and Test
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout del repositorio
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar Java 17 (Eclipse Temurin)
+      - name: Configurar Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          # Caché de dependencias Maven para acelerar builds sucesivos
           cache: 'maven'
 
-      - name: Compilar, testear y empaquetar (proyecto raíz multi-módulo)
+      - name: Compilar y ejecutar tests
         run: mvn clean package --batch-mode --no-transfer-progress
-        # mvn clean package ejecuta: validate → compile → test → package
-        # en ambos módulos (bff-service y worker-service) desde la raíz
 
-      - name: Subir artefactos JAR como artifacts de GitHub Actions
+      - name: Subir JARs como artefactos
         uses: actions/upload-artifact@v4
         with:
           name: jars-compilados
@@ -95,42 +37,34 @@ jobs:
             worker-service/target/*.jar
           retention-days: 5
 
-  # ──────────────────────────────────────────────────────────
-  # ETAPA 2: Publicar imágenes en Docker Hub
-  # Depende de que build-and-test haya pasado exitosamente
-  # ──────────────────────────────────────────────────────────
   docker-build-push:
-    name: Build & Push → Docker Hub
+    name: Build and Push Docker Hub
     runs-on: ubuntu-latest
-    needs: build-and-test   # Solo corre si la etapa 1 fue exitosa
-
+    needs: build-and-test
     steps:
-      - name: Checkout del repositorio
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar Java 17 para reconstruir JARs en este job
+      - name: Configurar Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
 
-      # Los artefactos del job anterior no se comparten entre jobs,
-      # por lo que se reempaqueta aquí (sin tests para mayor velocidad).
-      - name: Empaquetar JARs (sin tests — ya validados en etapa 1)
+      - name: Empaquetar JARs sin tests
         run: mvn package -DskipTests --batch-mode --no-transfer-progress
 
-      - name: Login en Docker Hub
+      - name: Login Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # ── BFF Service ──────────────────────────────────────
-      - name: Configurar Docker Buildx (construcción multi-platform)
+      - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build & Push — bff-service
+      - name: Build y Push bff-service
         uses: docker/build-push-action@v5
         with:
           context: ./bff-service
@@ -139,12 +73,10 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/bff-service:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/bff-service:${{ github.sha }}
-          # Caché de capas Docker en GitHub Actions para builds más rápidos
           cache-from: type=gha,scope=bff-service
-          cache-to:   type=gha,scope=bff-service,mode=max
+          cache-to: type=gha,scope=bff-service,mode=max
 
-      # ── Worker Service ───────────────────────────────────
-      - name: Build & Push — worker-service
+      - name: Build y Push worker-service
         uses: docker/build-push-action@v5
         with:
           context: ./worker-service
@@ -154,91 +86,71 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/worker-service:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/worker-service:${{ github.sha }}
           cache-from: type=gha,scope=worker-service
-          cache-to:   type=gha,scope=worker-service,mode=max
+          cache-to: type=gha,scope=worker-service,mode=max
 
-  # ──────────────────────────────────────────────────────────
-  # ETAPA 3: Deploy en AWS EC2 vía SSH
-  # Se conecta a la instancia y actualiza los contenedores
-  # ──────────────────────────────────────────────────────────
   deploy-ec2:
-    name: Deploy → AWS EC2 (SSH)
+    name: Deploy en AWS EC2
     runs-on: ubuntu-latest
-    needs: docker-build-push   # Solo corre si las imágenes fueron publicadas
-
+    needs: docker-build-push
     steps:
-      - name: Deploy en EC2 vía SSH
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          AZURE_AD_ISSUER_URI: ${{ secrets.AZURE_AD_ISSUER_URI }}
+          AZURE_AD_JWKS_URI: ${{ secrets.AZURE_AD_JWKS_URI }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          RABBITMQ_HOST: ${{ secrets.RABBITMQ_HOST }}
+          RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME }}
+          RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          ORACLE_DB_URL: ${{ secrets.ORACLE_DB_URL }}
+          ORACLE_DB_USER: ${{ secrets.ORACLE_DB_USER }}
+          ORACLE_DB_PASSWORD: ${{ secrets.ORACLE_DB_PASSWORD }}
+          AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
+          AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         with:
-          host:        ${{ secrets.EC2_HOST }}
-          username:    ${{ secrets.EC2_USER }}
-          key:         ${{ secrets.EC2_SSH_KEY }}
-          port:        22
-          # Tiempo máximo de espera para la conexión SSH (segundos)
-          timeout:     60s
-          # Tiempo máximo total de ejecución del script (segundos)
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 60s
           command_timeout: 300s
-          # Script ejecutado dentro de la instancia EC2
-          # Se asume que el docker-compose.yml de producción está en ~/gestion-cursos/
-          # y que Docker y Docker Compose ya están instalados en la VM.
+          envs: AZURE_AD_ISSUER_URI,AZURE_AD_JWKS_URI,AZURE_CLIENT_ID,RABBITMQ_HOST,RABBITMQ_USERNAME,RABBITMQ_PASSWORD,ORACLE_DB_URL,ORACLE_DB_USER,ORACLE_DB_PASSWORD,AWS_S3_REGION,AWS_S3_BUCKET_NAME,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_SESSION_TOKEN,DOCKERHUB_USERNAME
           script: |
             set -e
-            echo "========================================"
-            echo " Iniciando deploy en EC2"
-            echo " Commit: ${{ github.sha }}"
-            echo " Rama:   ${{ github.ref_name }}"
-            echo "========================================"
 
-            # ── Paso 1: Exportar variables de entorno para docker-compose ─
-            # Los secrets de GitHub se pasan como env vars al proceso SSH
-            # y desde ahí al docker-compose mediante el archivo .env de la VM.
-            echo "[0/4] Escribiendo variables de entorno en ~/gestion-cursos/.env..."
-            cat > ~/gestion-cursos/.env << 'ENVEOF'
-AZURE_AD_ISSUER_URI=${{ secrets.AZURE_AD_ISSUER_URI }}
-AZURE_AD_JWKS_URI=${{ secrets.AZURE_AD_JWKS_URI }}
-AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}
-RABBITMQ_HOST=${{ secrets.RABBITMQ_HOST }}
-RABBITMQ_USERNAME=${{ secrets.RABBITMQ_USERNAME }}
-RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}
-ORACLE_DB_URL=${{ secrets.ORACLE_DB_URL }}
-ORACLE_DB_USER=${{ secrets.ORACLE_DB_USER }}
-ORACLE_DB_PASSWORD=${{ secrets.ORACLE_DB_PASSWORD }}
-AWS_S3_REGION=${{ secrets.AWS_S3_REGION }}
-AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}
-AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}
-DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
-ENVEOF
-            echo "      Variables de entorno escritas correctamente."
+            echo "Iniciando deploy - Commit: ${{ github.sha }}"
 
-            # ── Paso 2: Descargar imágenes actualizadas desde Docker Hub ──
-            echo "[1/4] Descargando imágenes desde Docker Hub..."
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/bff-service:latest
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/worker-service:latest
-            echo "      Imágenes descargadas correctamente."
+            mkdir -p ~/gestion-cursos
 
-            # ── Paso 3: Moverse al directorio de despliegue ───────────────
-            # Ajustar esta ruta si el docker-compose.yml de producción
-            # está en una ubicación diferente dentro de la VM.
+            echo "AZURE_AD_ISSUER_URI=${AZURE_AD_ISSUER_URI}" > ~/gestion-cursos/.env
+            echo "AZURE_AD_JWKS_URI=${AZURE_AD_JWKS_URI}" >> ~/gestion-cursos/.env
+            echo "AZURE_CLIENT_ID=${AZURE_CLIENT_ID}" >> ~/gestion-cursos/.env
+            echo "RABBITMQ_HOST=${RABBITMQ_HOST}" >> ~/gestion-cursos/.env
+            echo "RABBITMQ_USERNAME=${RABBITMQ_USERNAME}" >> ~/gestion-cursos/.env
+            echo "RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}" >> ~/gestion-cursos/.env
+            echo "ORACLE_DB_URL=${ORACLE_DB_URL}" >> ~/gestion-cursos/.env
+            echo "ORACLE_DB_USER=${ORACLE_DB_USER}" >> ~/gestion-cursos/.env
+            echo "ORACLE_DB_PASSWORD=${ORACLE_DB_PASSWORD}" >> ~/gestion-cursos/.env
+            echo "AWS_S3_REGION=${AWS_S3_REGION}" >> ~/gestion-cursos/.env
+            echo "AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}" >> ~/gestion-cursos/.env
+            echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> ~/gestion-cursos/.env
+            echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> ~/gestion-cursos/.env
+            echo "AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}" >> ~/gestion-cursos/.env
+            echo "DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}" >> ~/gestion-cursos/.env
+
+            echo "Variables de entorno escritas en .env"
+
+            docker pull ${DOCKERHUB_USERNAME}/bff-service:latest
+            docker pull ${DOCKERHUB_USERNAME}/worker-service:latest
+
             cd ~/gestion-cursos
 
-            # ── Paso 4: Detener los contenedores en ejecución ─────────────
-            echo "[2/4] Deteniendo contenedores actuales..."
             docker-compose down
-            echo "      Contenedores detenidos."
-
-            # ── Paso 5: Levantar los contenedores con las nuevas imágenes ──
-            echo "[3/4] Iniciando contenedores con imágenes actualizadas..."
             docker-compose up -d
-            echo "      Contenedores levantados en segundo plano."
-
-            # ── Paso 6: Limpiar imágenes antiguas (dangling) ──────────────
-            echo "[4/4] Limpiando imágenes sin uso para liberar espacio..."
             docker image prune -f
-            echo "      Limpieza completada."
 
-            echo "========================================"
-            echo " Deploy finalizado exitosamente."
-            echo " bff-service    → http://$(hostname -I | awk '{print $1}'):8080"
-            echo " worker-service → http://$(hostname -I | awk '{print $1}'):8081"
-            echo "========================================"
+            echo "Deploy finalizado exitosamente"
