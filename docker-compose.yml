@@ -1,0 +1,54 @@
+version: '3.8'
+
+# ============================================================
+# docker-compose.yml — Infraestructura local de desarrollo
+# Levanta RabbitMQ con panel de administración.
+#
+# Uso:
+#   docker-compose up -d          → iniciar en background
+#   docker-compose down           → detener y eliminar contenedores
+#   docker-compose logs rabbitmq  → ver logs del broker
+#
+# Acceso al panel de administración:
+#   URL:      http://localhost:15672
+#   Usuario:  guest
+#   Password: guest
+# ============================================================
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-cursos
+    restart: unless-stopped
+
+    ports:
+      # Puerto AMQP: conexión de productores y consumidores Spring Boot
+      - "5672:5672"
+      # Puerto HTTP: panel de administración web
+      - "15672:15672"
+
+    environment:
+      # Credenciales del usuario administrador por defecto
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      # Nombre del virtual host por defecto
+      RABBITMQ_DEFAULT_VHOST: /
+
+    # Healthcheck: verifica que el broker esté listo para recibir conexiones
+    # antes de que los microservicios intenten conectarse.
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+    volumes:
+      # Persistencia de datos y configuración entre reinicios
+      - rabbitmq_data:/var/lib/rabbitmq
+
+# Volumen nombrado para persistir mensajes y configuración de RabbitMQ
+volumes:
+  rabbitmq_data:
+    driver: local

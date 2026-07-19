@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ================================================================
+         POM Raíz — Proyecto Multi-módulo: Gestión de Cursos en Línea
+         Agrupa bff-service y worker-service bajo un build unificado.
+         ================================================================ -->
+    <groupId>cl.duoc.cursosapp</groupId>
+    <artifactId>gestion-cursos-en-linea</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <name>Gestión de Cursos en Línea — Proyecto Raíz</name>
+    <description>
+        Plataforma de gestión de cursos en línea con arquitectura de microservicios.
+        BFF Service (productor RabbitMQ) + Worker Service (consumidor, Oracle Cloud, AWS S3).
+    </description>
+
+    <!-- Módulos que componen el proyecto -->
+    <modules>
+        <module>bff-service</module>
+        <module>worker-service</module>
+    </modules>
+
+    <!-- Herencia de Spring Boot para gestión centralizada de versiones -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.5</version>
+        <relativePath/>
+    </parent>
+
+    <!-- Propiedades compartidas entre todos los módulos -->
+    <properties>
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- Versiones de dependencias compartidas -->
+        <spring-boot.version>3.2.5</spring-boot.version>
+        <awssdk.version>2.25.40</awssdk.version>
+        <openpdf.version>1.3.30</openpdf.version>
+        <ojdbc.version>23.4.0.24.05</ojdbc.version>
+    </properties>
+
+    <!-- ================================================================
+         Gestión centralizada de dependencias — los módulos hijos
+         heredan versiones sin necesidad de redeclararlas.
+         ================================================================ -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- BOM de AWS SDK v2: gestiona todas las versiones del SDK -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- Plugin de build compartido: compilador Java 17 -->
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <encoding>UTF-8</encoding>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+</project>

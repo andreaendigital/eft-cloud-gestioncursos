@@ -1,0 +1,69 @@
+# ============================================================
+# .gitignore — Gestión de Cursos en Línea
+# ============================================================
+
+# ── Kiro IDE (solo local, no se sube al repositorio) ─────────
+.kiro/
+
+# ── Maven ────────────────────────────────────────────────────
+target/
+bff-service/target/
+worker-service/target/
+*.jar
+*.war
+*.ear
+!.mvn/wrapper/maven-wrapper.jar
+
+# ── Variables de entorno y secretos ──────────────────────────
+.env
+.env.*
+*.env
+secrets.yml
+secrets.yaml
+
+# ── Oracle Wallet (credenciales de Oracle Cloud) ─────────────
+wallet/
+**/wallet/
+tnsnames.ora
+sqlnet.ora
+cwallet.sso
+ewallet.p12
+
+# ── AWS Credentials ──────────────────────────────────────────
+.aws/
+aws-credentials.txt
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+logs/
+**/logs/
+
+# ── IntelliJ IDEA ────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# ── Eclipse / STS ────────────────────────────────────────────
+.classpath
+.project
+.settings/
+bin/
+
+# ── VS Code ──────────────────────────────────────────────────
+.vscode/
+
+# ── macOS ────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+
+# ── Windows ──────────────────────────────────────────────────
+Thumbs.db
+desktop.ini
+
+# ── Docker local override ────────────────────────────────────
+docker-compose.override.yml
+
+# ── PDFs generados localmente durante pruebas ────────────────
+*.pdf

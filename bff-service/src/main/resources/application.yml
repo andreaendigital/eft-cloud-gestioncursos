@@ -1,0 +1,50 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: bff-service
+
+  # ── OAuth2 Resource Server ──────────────────────────────────────────────
+  # Valida tokens JWT emitidos por Azure AD.
+  #
+  # Variables de entorno requeridas (GitHub Secrets → inyectadas en runtime):
+  #
+  #   AZURE_AD_ISSUER_URI  → URI del emisor del token JWT de Azure AD
+  #                          Formato: https://login.microsoftonline.com/{tenant-id}/v2.0
+  #
+  #   AZURE_AD_JWKS_URI    → URI del endpoint JWKS para validar la firma del JWT
+  #                          Formato: https://login.microsoftonline.com/{tenant-id}/discovery/v2.0/keys
+  #
+  # Si se provee AZURE_AD_JWKS_URI, Spring Security lo usa directamente
+  # para descargar las claves públicas sin necesidad de hacer autodiscovery
+  # desde el issuer-uri. Ambas variables deben estar definidas en producción.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AZURE_AD_ISSUER_URI}
+          jwk-set-uri: ${AZURE_AD_JWKS_URI}
+
+  # ── RabbitMQ ─────────────────────────────────────────────────────────────
+  # Todas las credenciales se inyectan por variables de entorno.
+  # Valores 'guest' como fallback solo para desarrollo local con docker-compose.
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    # Confirmación de publicación: garantiza que el mensaje llegó al broker
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    connection-timeout: 5000
+
+# ── Logging ──────────────────────────────────────────────────────────────
+logging:
+  level:
+    com.sistema.cursos.bff: DEBUG
+    org.springframework.security: INFO
+    org.springframework.amqp: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

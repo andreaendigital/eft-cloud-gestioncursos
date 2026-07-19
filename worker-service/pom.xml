@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ================================================================
+         Worker Service — Procesador Asíncrono
+         Responsabilidades:
+           1. Consumir mensajes de cola-inscripciones (RabbitMQ)
+           2. Consultar precios y calcular totales (Oracle Cloud / JPA)
+           3. Generar comprobante PDF (OpenPDF)
+           4. Subir PDF a AWS S3 (AWS SDK v2)
+           5. Persistir inscripción en Oracle Cloud
+           6. Exponer API REST de gestión (GET/PUT/DELETE)
+         ================================================================ -->
+    <parent>
+        <groupId>cl.duoc.cursosapp</groupId>
+        <artifactId>gestion-cursos-en-linea</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>worker-service</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    <name>Worker Service</name>
+    <description>
+        Microservicio Worker: consume inscripciones de RabbitMQ, calcula costos,
+        genera PDFs con OpenPDF, sube a S3 y persiste en Oracle Cloud.
+    </description>
+
+    <dependencies>
+
+        <!-- ── Web: expone endpoints REST de gestión ─────────────────── -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- ── Data JPA: acceso a Oracle Cloud mediante repositorios ──── -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- ── Oracle JDBC Driver (ojdbc11): conecta con Oracle Cloud ─── -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc11</artifactId>
+            <version>${ojdbc.version}</version>
+        </dependency>
+
+        <!-- ── Oracle UCP: pool de conexiones para Oracle Cloud ─────────  -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ucp</artifactId>
+            <version>${ojdbc.version}</version>
+        </dependency>
+
+        <!-- ── AMQP / RabbitMQ: consume mensajes de cola-inscripciones ── -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- ── Validation: Bean Validation para entidades y DTOs ─────── -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- ── AWS SDK v2 — S3: sube el PDF del comprobante al bucket ─── -->
+        <!-- Versión gestionada por el BOM declarado en el POM raíz       -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+        </dependency>
+
+        <!-- ── AWS SDK v2 — STS: soporte para credenciales temporales
+             (necesario para AWS Academy / AssumeRole) ───────────────── -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sts</artifactId>
+        </dependency>
+
+        <!-- ── OpenPDF: genera el comprobante PDF del resumen ───────────
+             Librería open-source derivada de iText 4, compatible con
+             Spring Boot sin conflictos de licencia AGPL.               -->
+        <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>${openpdf.version}</version>
+        </dependency>
+
+        <!-- ── Jackson: serialización/deserialización de mensajes JSON ── -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- ── Jackson Datatype JSR310: soporte para LocalDateTime ─────  -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+
+        <!-- ── Test: soporte para pruebas unitarias e integración ────── -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- ── H2 en memoria: base de datos embebida para pruebas ──────  -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- ── RabbitMQ Test: utilidades de prueba para AMQP ─────────── -->
+        <dependency>
+            <groupId>org.springframework.amqp</groupId>
+            <artifactId>spring-rabbit-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Plugin de Spring Boot: genera JAR ejecutable -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

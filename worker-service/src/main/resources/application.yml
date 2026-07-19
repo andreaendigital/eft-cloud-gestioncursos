@@ -1,0 +1,82 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: worker-service
+
+  # ── Oracle Cloud — Spring Data JPA ─────────────────────────────────────
+  # Todas las credenciales se inyectan por variables de entorno.
+  # Formato de URL directa (sin billetera):
+  #   jdbc:oracle:thin:@//<host>:<port>/<service_name>
+  # Formato con Oracle Wallet (recomendado para Oracle Cloud ATP):
+  #   jdbc:oracle:thin:@<alias>?TNS_ADMIN=/opt/oracle/wallet
+  datasource:
+    url:      ${ORACLE_DB_URL:jdbc:oracle:thin:@localhost:1521/ORCL}
+    username: ${ORACLE_DB_USER:system}
+    password: ${ORACLE_DB_PASSWORD:oracle}
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      # Pool de conexiones: ajustado para carga moderada en AWS Academy
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1 FROM DUAL
+
+  jpa:
+    # validate: verifica que el esquema en BD coincide con las entidades JPA.
+    # NO crea ni altera tablas — el schema.sql ya las creó en Oracle.
+    hibernate:
+      ddl-auto: validate
+    # Dialecto para Oracle 12c+ (compatible con Oracle Cloud ATP/ADW)
+    database-platform: org.hibernate.dialect.OracleDialect
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        # Mejora de rendimiento: usa batch inserts cuando sea posible
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+
+  # ── RabbitMQ ─────────────────────────────────────────────────────────────
+  # Las mismas variables que usa el BFF Service para consistencia
+  rabbitmq:
+    host:         ${RABBITMQ_HOST:localhost}
+    port:         ${RABBITMQ_PORT:5672}
+    username:     ${RABBITMQ_USERNAME:guest}
+    password:     ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    listener:
+      simple:
+        # acknowledge-mode: manual permite ack explícito tras procesamiento exitoso
+        # auto: más simple, hace ack automático al retornar del listener
+        acknowledge-mode: auto
+        # Reintentos ante fallo de conexión inicial al broker
+        retry:
+          enabled: true
+          initial-interval: 2000
+          max-attempts: 5
+          multiplier: 2.0
+
+# ── AWS S3 ─────────────────────────────────────────────────────────────────
+# Propiedades personalizadas para el CloudStorageService.
+# AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY y AWS_SESSION_TOKEN son leídas
+# automáticamente por DefaultCredentialsProvider del AWS SDK v2 desde
+# el entorno del proceso — NO se declaran aquí.
+aws:
+  s3:
+    region:      ${AWS_S3_REGION:us-east-1}
+    bucket-name: ${AWS_S3_BUCKET_NAME:bucket-cursos-inscripciones}
+
+# ── Logging ──────────────────────────────────────────────────────────────
+logging:
+  level:
+    com.sistema.cursos.worker: DEBUG
+    org.springframework.amqp:  INFO
+    org.hibernate.SQL:         WARN
+    com.zaxxer.hikari:         WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
