@@ -42,6 +42,7 @@ services:
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      WORKER_SERVICE_URL: http://worker-service:8081
       SPRING_PROFILES_ACTIVE: prod
     depends_on:
       rabbitmq:

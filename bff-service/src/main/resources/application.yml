@@ -63,3 +63,10 @@ logging:
     org.springframework.amqp: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# ── Worker Service URL (proxy interno del BFF) ────────────────────────────
+# En Docker Compose: usa el nombre del servicio "worker-service" (red interna Docker)
+# En desarrollo local: sobreescribir con http://localhost:8081
+worker:
+  service:
+    url: ${WORKER_SERVICE_URL:http://worker-service:8081}
