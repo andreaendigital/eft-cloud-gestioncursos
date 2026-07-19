@@ -1,0 +1,76 @@
+version: '3.8'
+
+# ============================================================
+# docker-compose.prod.yml — Despliegue en AWS EC2
+# Este archivo se copia a ~/gestion-cursos/ en la instancia EC2.
+# Las variables de entorno se leen desde el archivo .env
+# que el pipeline CI/CD escribe en el mismo directorio.
+# ============================================================
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-cursos
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  bff-service:
+    image: ${DOCKERHUB_USERNAME}/bff-service:latest
+    container_name: bff-service
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${AZURE_AD_ISSUER_URI}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: ${AZURE_AD_JWKS_URI}
+      AZURE_AD_CLIENT_ID: ${AZURE_CLIENT_ID}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      SPRING_PROFILES_ACTIVE: prod
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  worker-service:
+    image: ${DOCKERHUB_USERNAME}/worker-service:latest
+    container_name: worker-service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: ${ORACLE_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${ORACLE_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${ORACLE_DB_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+      AWS_S3_REGION: ${AWS_S3_REGION}
+      AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
+      SPRING_PROFILES_ACTIVE: prod
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  rabbitmq_data:
+    driver: local
