@@ -1,43 +1,26 @@
 # ============================================================
 # Dockerfile — Worker Service
-# Build multi-stage optimizado para Java 17 + Spring Boot 3.x
-#
-# Etapa 1 (build): compila el proyecto con Maven y genera el JAR.
-# Etapa 2 (runtime): imagen mínima JRE para ejecutar el JAR.
-#
-# Uso:
-#   docker build -t worker-service:latest .
-#   docker run -p 8081:8081 \
-#     -e SPRING_DATASOURCE_URL=jdbc:oracle:thin:@<host>:<port>/<service> \
-#     -e SPRING_DATASOURCE_USERNAME=<user> \
-#     -e SPRING_DATASOURCE_PASSWORD=<pass> \
-#     -e SPRING_RABBITMQ_HOST=<host> \
-#     -e AWS_ACCESS_KEY_ID=<key> \
-#     -e AWS_SECRET_ACCESS_KEY=<secret> \
-#     -e AWS_SESSION_TOKEN=<token> \
-#     -e AWS_S3_REGION=us-east-1 \
-#     -e AWS_S3_BUCKET_NAME=<bucket> \
-#     worker-service:latest
+# Build multi-stage para Java 17 + Spring Boot 3.x
+# Usa Maven del sistema (sin wrapper mvnw)
 # ============================================================
 
 # ── Etapa 1: Compilación ─────────────────────────────────────
 FROM eclipse-temurin:17-jdk-alpine AS build
 
-LABEL stage="builder"
 WORKDIR /app
 
-# Copiar descriptor de dependencias primero para aprovechar
-# la caché de Docker: si pom.xml no cambia, no se re-descargan deps.
-COPY pom.xml .
-COPY .mvn/ .mvn/
-COPY mvnw .
+# Instalar Maven en la imagen Alpine
+RUN apk add --no-cache maven
 
-# Descargar dependencias en capa separada (mejora velocidad de rebuild)
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
+# Copiar pom.xml primero para cachear la descarga de dependencias
+COPY pom.xml .
+
+# Descargar dependencias en capa separada
+RUN mvn dependency:go-offline -B
 
 # Copiar el código fuente y compilar el JAR ejecutable
 COPY src/ src/
-RUN ./mvnw package -DskipTests -B
+RUN mvn package -DskipTests -B
 
 # ── Etapa 2: Imagen de ejecución ─────────────────────────────
 FROM eclipse-temurin:17-jre-alpine AS runtime
@@ -55,12 +38,9 @@ USER appuser
 # Copiar solo el JAR generado desde la etapa de build
 COPY --from=build /app/target/*.jar app.jar
 
-# Puerto en el que el Worker Service escucha
 EXPOSE 8081
 
-# Variables de entorno con valores por defecto (se sobreescriben en runtime)
 ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseContainerSupport"
 ENV SPRING_PROFILES_ACTIVE="prod"
 
-# Punto de entrada: ejecutar el JAR con opciones JVM configurables
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
