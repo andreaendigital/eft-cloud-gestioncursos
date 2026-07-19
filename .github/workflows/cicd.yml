@@ -94,7 +94,7 @@ jobs:
     needs: docker-build-push
     steps:
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.1
         env:
           AZURE_AD_ISSUER_URI: ${{ secrets.AZURE_AD_ISSUER_URI }}
           AZURE_AD_JWKS_URI: ${{ secrets.AZURE_AD_JWKS_URI }}
