@@ -22,6 +22,10 @@
 #                               Formato: https://login.microsoftonline.com/{tenant-id}/v2.0
 #     AZURE_AD_JWKS_URI       → URI del endpoint JWKS para validar firma JWT
 #                               Formato: https://login.microsoftonline.com/{tenant-id}/discovery/v2.0/keys
+#     AZURE_CLIENT_ID         → Application (client) ID del BFF en Azure AD
+#                               Se usa para validar el claim "aud" del JWT entrante.
+#                               (AZURE_CLIENT_SECRET y AZURE_TENANT_ID NO son necesarios:
+#                                el BFF solo verifica tokens, nunca los solicita)
 #
 #   Infraestructura (pasadas al docker-compose en EC2):
 #     RABBITMQ_HOST           → host del broker RabbitMQ en EC2
@@ -30,8 +34,16 @@
 #     ORACLE_DB_URL           → URL JDBC de Oracle Cloud
 #     ORACLE_DB_USER          → usuario de Oracle Cloud
 #     ORACLE_DB_PASSWORD      → contraseña de Oracle Cloud
-#     AWS_S3_REGION           → región AWS del bucket S3
+#     AWS_S3_REGION           → región AWS del bucket S3 (ej: us-east-1)
 #     AWS_S3_BUCKET_NAME      → nombre del bucket S3
+#
+#   AWS S3 — credenciales de AWS Academy (worker-service):
+#     AWS_ACCESS_KEY_ID       → clave de acceso temporal de AWS Academy
+#     AWS_SECRET_ACCESS_KEY   → clave secreta temporal de AWS Academy
+#     AWS_SESSION_TOKEN       → token de sesión temporal de AWS Academy
+#                               (las tres las provee AWS Academy al iniciar el lab)
+#                               Son leídas automáticamente por DefaultCredentialsProvider
+#                               del AWS SDK v2 desde las variables de entorno del proceso.
 # ============================================================
 
 name: CI/CD Pipeline — Cursos en Línea
@@ -183,6 +195,7 @@ jobs:
             cat > ~/gestion-cursos/.env << 'ENVEOF'
 AZURE_AD_ISSUER_URI=${{ secrets.AZURE_AD_ISSUER_URI }}
 AZURE_AD_JWKS_URI=${{ secrets.AZURE_AD_JWKS_URI }}
+AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}
 RABBITMQ_HOST=${{ secrets.RABBITMQ_HOST }}
 RABBITMQ_USERNAME=${{ secrets.RABBITMQ_USERNAME }}
 RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}
@@ -191,6 +204,9 @@ ORACLE_DB_USER=${{ secrets.ORACLE_DB_USER }}
 ORACLE_DB_PASSWORD=${{ secrets.ORACLE_DB_PASSWORD }}
 AWS_S3_REGION=${{ secrets.AWS_S3_REGION }}
 AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}
+AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}
 DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
 ENVEOF
             echo "      Variables de entorno escritas correctamente."

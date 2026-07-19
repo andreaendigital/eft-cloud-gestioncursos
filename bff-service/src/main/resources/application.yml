@@ -6,25 +6,40 @@ spring:
     name: bff-service
 
   # ── OAuth2 Resource Server ──────────────────────────────────────────────
-  # Valida tokens JWT emitidos por Azure AD.
+  # El BFF actúa como Resource Server: VALIDA tokens JWT que llegan en el
+  # header "Authorization: Bearer <token>". NO pide tokens a Azure AD.
   #
-  # Variables de entorno requeridas (GitHub Secrets → inyectadas en runtime):
+  # Por eso NO necesita AZURE_CLIENT_SECRET ni AZURE_TENANT_ID:
+  #   - AZURE_CLIENT_SECRET → solo lo necesita quien PIDE tokens (el frontend)
+  #   - AZURE_TENANT_ID     → ya está embebido en la URL del ISSUER y JWKS
+  #
+  # Variables de entorno requeridas (GitHub Secrets):
   #
   #   AZURE_AD_ISSUER_URI  → URI del emisor del token JWT de Azure AD
   #                          Formato: https://login.microsoftonline.com/{tenant-id}/v2.0
   #
-  #   AZURE_AD_JWKS_URI    → URI del endpoint JWKS para validar la firma del JWT
+  #   AZURE_AD_JWKS_URI    → URI del endpoint JWKS para verificar la firma JWT
   #                          Formato: https://login.microsoftonline.com/{tenant-id}/discovery/v2.0/keys
+  #                          Spring Security descarga aquí las claves públicas RSA de Azure AD.
   #
-  # Si se provee AZURE_AD_JWKS_URI, Spring Security lo usa directamente
-  # para descargar las claves públicas sin necesidad de hacer autodiscovery
-  # desde el issuer-uri. Ambas variables deben estar definidas en producción.
+  #   AZURE_CLIENT_ID      → Application (client) ID registrado en Azure AD.
+  #                          Se usa para validar el claim "aud" (audience) del JWT,
+  #                          garantizando que el token fue emitido específicamente
+  #                          para este BFF y no para otra aplicación del tenant.
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${AZURE_AD_ISSUER_URI}
+          issuer-uri:  ${AZURE_AD_ISSUER_URI}
           jwk-set-uri: ${AZURE_AD_JWKS_URI}
+
+# ── Azure AD — validación de audience ────────────────────────────────────
+# El claim "aud" del JWT debe coincidir con el AZURE_CLIENT_ID registrado
+# en Azure AD para este BFF. Esto lo configura JwtAuthenticationConverter
+# o se puede declarar aquí si se usa spring-security-oauth2-resource-server.
+azure:
+  ad:
+    client-id: ${AZURE_CLIENT_ID}
 
   # ── RabbitMQ ─────────────────────────────────────────────────────────────
   # Todas las credenciales se inyectan por variables de entorno.
