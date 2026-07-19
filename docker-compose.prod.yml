@@ -2,9 +2,8 @@ version: '3.8'
 
 # ============================================================
 # docker-compose.prod.yml — Despliegue en AWS EC2
-# Este archivo se copia a ~/gestion-cursos/ en la instancia EC2.
-# Las variables de entorno se leen desde el archivo .env
-# que el pipeline CI/CD escribe en el mismo directorio.
+# Red interna "cursos-net" compartida por todos los servicios.
+# El BFF resuelve "worker-service:8081" por nombre DNS de Docker.
 # ============================================================
 
 services:
@@ -27,6 +26,41 @@ services:
       start_period: 15s
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - cursos-net
+
+  worker-service:
+    image: ${DOCKERHUB_USERNAME}/worker-service:latest
+    container_name: worker-service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: ${ORACLE_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${ORACLE_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${ORACLE_DB_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+      AWS_S3_REGION: ${AWS_S3_REGION:-us-east-1}
+      AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
+      SPRING_PROFILES_ACTIVE: prod
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - cursos-net
+    # Healthcheck para que el BFF espere a que el Worker esté listo
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   bff-service:
     image: ${DOCKERHUB_USERNAME}/bff-service:latest
@@ -47,30 +81,14 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-
-  worker-service:
-    image: ${DOCKERHUB_USERNAME}/worker-service:latest
-    container_name: worker-service
-    restart: unless-stopped
-    ports:
-      - "8081:8081"
-    environment:
-      SPRING_DATASOURCE_URL: ${ORACLE_DB_URL}
-      SPRING_DATASOURCE_USERNAME: ${ORACLE_DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${ORACLE_DB_PASSWORD}
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
-      AWS_S3_REGION: ${AWS_S3_REGION}
-      AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
-      SPRING_PROFILES_ACTIVE: prod
-    depends_on:
-      rabbitmq:
+      worker-service:
         condition: service_healthy
+    networks:
+      - cursos-net
+
+networks:
+  cursos-net:
+    driver: bridge
 
 volumes:
   rabbitmq_data:

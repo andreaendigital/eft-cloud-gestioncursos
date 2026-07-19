@@ -127,6 +127,12 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- ── Actuator: healthcheck para Docker Compose depends_on ──── -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
