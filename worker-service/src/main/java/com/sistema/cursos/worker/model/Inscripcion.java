@@ -124,8 +124,11 @@ public class Inscripcion {
 
     // ── Constructores ─────────────────────────────────────────────────────
 
-    /** Constructor requerido por JPA. */
-    protected Inscripcion() {}
+    /**
+     * Constructor sin argumentos requerido por JPA (Hibernate) y para
+     * instanciación programática desde controladores (actualizaciones parciales).
+     */
+    public Inscripcion() {}
 
     /**
      * Constructor completo para crear una inscripción desde el Worker Service.
