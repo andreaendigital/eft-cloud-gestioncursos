@@ -1,8 +1,10 @@
 # Evaluación Final Transversal Cloud Native (EFT)
 
-Alumna : Andrea Rosero
-Link a informe : [Ver informe](https://docs.google.com/document/d/1XpDYf44h45zYQFODyzZj7a-EGdVElQIo/edit?usp=sharing&ouid=116934276410792938897&rtpof=true&sd=true)
-Link a video : 
+- Alumna : Andrea Rosero
+
+- Link a informe : [Ver informe](https://docs.google.com/document/d/1XpDYf44h45zYQFODyzZj7a-EGdVElQIo/edit?usp=sharing&ouid=116934276410792938897&rtpof=true&sd=true)
+
+- Link a video : [https://youtu.be/NPiMe_F_Ay4](https://youtu.be/NPiMe_F_Ay4)
 
 ## Plataforma de Gestión de Cursos en Línea
 
