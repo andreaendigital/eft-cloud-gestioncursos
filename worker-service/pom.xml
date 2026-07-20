@@ -113,11 +113,11 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- ── H2 en memoria: base de datos embebida para pruebas ──────  -->
+        <!-- ── H2 en memoria: base de datos embebida (prod + test) ─────  -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>test</scope>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- ── RabbitMQ Test: utilidades de prueba para AMQP ─────────── -->
