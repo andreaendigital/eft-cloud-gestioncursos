@@ -146,9 +146,9 @@ jobs:
             echo "RABBITMQ_HOST=${RABBITMQ_HOST}" >> ~/gestion-cursos/.env
             echo "RABBITMQ_USERNAME=${RABBITMQ_USERNAME}" >> ~/gestion-cursos/.env
             echo "RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}" >> ~/gestion-cursos/.env
-            echo "ORACLE_DB_URL=${ORACLE_DB_URL}" >> ~/gestion-cursos/.env
-            echo "ORACLE_DB_USER=${ORACLE_DB_USER}" >> ~/gestion-cursos/.env
-            echo "ORACLE_DB_PASSWORD=${ORACLE_DB_PASSWORD}" >> ~/gestion-cursos/.env
+            printf 'ORACLE_DB_URL=%s\n' "${ORACLE_DB_URL}" >> ~/gestion-cursos/.env
+            printf 'ORACLE_DB_USER=%s\n' "${ORACLE_DB_USER}" >> ~/gestion-cursos/.env
+            printf 'ORACLE_DB_PASSWORD=%s\n' "${ORACLE_DB_PASSWORD}" >> ~/gestion-cursos/.env
             echo "AWS_S3_REGION=${AWS_S3_REGION}" >> ~/gestion-cursos/.env
             echo "AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}" >> ~/gestion-cursos/.env
             echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> ~/gestion-cursos/.env
