@@ -113,12 +113,8 @@ jobs:
           AZURE_AD_ISSUER_URI: ${{ secrets.AZURE_AD_ISSUER_URI }}
           AZURE_AD_JWKS_URI: ${{ secrets.AZURE_AD_JWKS_URI }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          RABBITMQ_HOST: ${{ secrets.RABBITMQ_HOST }}
           RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME }}
           RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
-          ORACLE_DB_URL: ${{ secrets.ORACLE_DB_URL }}
-          ORACLE_DB_USER: ${{ secrets.ORACLE_DB_USER }}
-          ORACLE_DB_PASSWORD: ${{ secrets.ORACLE_DB_PASSWORD }}
           AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
           AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -132,7 +128,7 @@ jobs:
           port: 22
           timeout: 60s
           command_timeout: 300s
-          envs: AZURE_AD_ISSUER_URI,AZURE_AD_JWKS_URI,AZURE_CLIENT_ID,RABBITMQ_HOST,RABBITMQ_USERNAME,RABBITMQ_PASSWORD,ORACLE_DB_URL,ORACLE_DB_USER,ORACLE_DB_PASSWORD,AWS_S3_REGION,AWS_S3_BUCKET_NAME,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_SESSION_TOKEN,DOCKERHUB_USERNAME
+          envs: AZURE_AD_ISSUER_URI,AZURE_AD_JWKS_URI,AZURE_CLIENT_ID,RABBITMQ_USERNAME,RABBITMQ_PASSWORD,AWS_S3_REGION,AWS_S3_BUCKET_NAME,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_SESSION_TOKEN,DOCKERHUB_USERNAME
           script: |
             set -e
 
@@ -143,12 +139,11 @@ jobs:
             echo "AZURE_AD_ISSUER_URI=${AZURE_AD_ISSUER_URI}" > ~/gestion-cursos/.env
             echo "AZURE_AD_JWKS_URI=${AZURE_AD_JWKS_URI}" >> ~/gestion-cursos/.env
             echo "AZURE_CLIENT_ID=${AZURE_CLIENT_ID}" >> ~/gestion-cursos/.env
-            echo "RABBITMQ_HOST=${RABBITMQ_HOST}" >> ~/gestion-cursos/.env
             echo "RABBITMQ_USERNAME=${RABBITMQ_USERNAME}" >> ~/gestion-cursos/.env
             echo "RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}" >> ~/gestion-cursos/.env
-            printf 'ORACLE_DB_URL=%s\n' "${ORACLE_DB_URL}" >> ~/gestion-cursos/.env
-            printf 'ORACLE_DB_USER=%s\n' "${ORACLE_DB_USER}" >> ~/gestion-cursos/.env
-            printf 'ORACLE_DB_PASSWORD=%s\n' "${ORACLE_DB_PASSWORD}" >> ~/gestion-cursos/.env
+            echo "ORACLE_DB_URL=jdbc:h2:mem:cursosdb;DB_CLOSE_DELAY=-1;MODE=Oracle" >> ~/gestion-cursos/.env
+            echo "ORACLE_DB_USER=sa" >> ~/gestion-cursos/.env
+            echo "ORACLE_DB_PASSWORD=" >> ~/gestion-cursos/.env
             echo "AWS_S3_REGION=${AWS_S3_REGION}" >> ~/gestion-cursos/.env
             echo "AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}" >> ~/gestion-cursos/.env
             echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> ~/gestion-cursos/.env
