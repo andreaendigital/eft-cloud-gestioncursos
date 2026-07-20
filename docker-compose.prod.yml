@@ -4,6 +4,7 @@ version: '3.8'
 # docker-compose.prod.yml — Despliegue en AWS EC2
 # Red interna "cursos-net" compartida por todos los servicios.
 # El BFF resuelve "worker-service:8081" por nombre DNS de Docker.
+# Pendiente crear variable para h2
 # ============================================================
 
 services:
